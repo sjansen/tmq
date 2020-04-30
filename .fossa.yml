@@ -1,0 +1,13 @@
+version: 1
+cli:
+  server: https://app.fossa.io
+  fetcher: custom
+  project: tmq
+analyze:
+  modules:
+  - name: github.com/sjansen/tmq
+    type: go
+    target: github.com/sjansen/tmq
+    path: .
+    options:
+      all-tags: true
