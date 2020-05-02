@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+
+	"github.com/google/uuid"
 )
 
 func main() {
@@ -39,7 +41,7 @@ func defaultHandler(w http.ResponseWriter, req *http.Request) {
 	fmt.Print("\n\n")
 
 	if action, ok := payload["Action"]; ok && len(action) > 0 {
-		if action[0] == "GetQueueURL" {
+		if action[0] == "GetQueueUrl" {
 			if ok := getQueueURL(w, req, payload); ok {
 				return
 			}
@@ -50,14 +52,22 @@ func defaultHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 type GetQueueURLResponse struct {
-	QueueURL string `xml:"GetQueueUrlResponse>GetQueueUrlResult>QueueUrl"`
+	XMLName   xml.Name `xml:"http://queue.amazonaws.com/doc/2012-11-05/ GetQueueUrlResponse"`
+	QueueURL  string   `xml:"GetQueueUrlResult>QueueUrl"`
+	RequestID string   `xml:"ResponseMetadata>RequestId"`
 }
 
 func getQueueURL(w http.ResponseWriter, req *http.Request, payload map[string][]string) bool {
 	if queue, ok := payload["QueueName"]; ok && len(queue) > 0 {
+		uuid, _ := uuid.NewRandom()
+		reqID := uuid.String()
+
+		w.Header()["X-Amzn-Requestid"] = []string{reqID}
+		w.Write([]byte(`<?xml version="1.0"?>`))
 		enc := xml.NewEncoder(w)
 		enc.Encode(GetQueueURLResponse{
-			QueueURL: "http://127.0.0.1:8080/" + queue[0],
+			QueueURL:  "http://127.0.0.1:8080/" + queue[0],
+			RequestID: reqID,
 		})
 		return true
 	}

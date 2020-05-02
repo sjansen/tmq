@@ -2,32 +2,43 @@ package main
 
 import (
 	"fmt"
-	"os"
 
+	"github.com/alecthomas/kong"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sqs"
 )
 
+var cli struct {
+	Debug    bool
+	Endpoint string `default:"http://127.0.0.1:8080"`
+	Profile  string `default:"default"`
+	Queue    string `default:"tmq"`
+	Region   string
+}
+
 func main() {
-	endpoint := os.Getenv("TMQ_ENDPOINT")
-	if endpoint == "" {
-		endpoint = "http://127.0.0.1:8080"
+	_ = kong.Parse(&cli)
+
+	cfg := aws.NewConfig().WithCredentials(
+		credentials.NewSharedCredentials("", cli.Profile),
+	)
+	if cli.Debug {
+		cfg = cfg.WithLogLevel(aws.LogDebugWithHTTPBody)
+	}
+	if cli.Endpoint != "" {
+		cfg = cfg.WithEndpoint(cli.Endpoint)
+	}
+	if cli.Region != "" {
+		cfg = cfg.WithRegion(cli.Region)
 	}
 
-	creds := credentials.NewStaticCredentials("id", "secret", "token")
 	sess := session.Must(session.NewSession())
-
-	svc := sqs.New(sess,
-		aws.NewConfig().
-			WithCredentials(creds).
-			WithRegion("us-west-2").
-			WithEndpoint(endpoint),
-	)
+	svc := sqs.New(sess, cfg)
 
 	qURL, err := svc.GetQueueUrl(&sqs.GetQueueUrlInput{
-		QueueName: aws.String("example"),
+		QueueName: aws.String(cli.Queue),
 	})
 
 	if err != nil {
